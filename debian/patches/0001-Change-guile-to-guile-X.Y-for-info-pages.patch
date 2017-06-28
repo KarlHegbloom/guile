@@ -1,0 +1,53 @@
+From 2524cac6c0d147843af5b88e503b80614a4b9fd3 Mon Sep 17 00:00:00 2001
+From: Rob Browning <rlb@defaultvalue.org>
+Date: Wed, 9 Nov 2011 21:53:41 -0600
+Subject: Change guile to guile-X.Y for info pages.
+
+---
+ doc/ref/Makefile.am | 3 ++-
+ doc/ref/guile.texi  | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+Index: guile-2.2-git/doc/ref/Makefile.am
+===================================================================
+--- guile-2.2-git.orig/doc/ref/Makefile.am	2017-06-28 17:15:12.540367770 -0600
++++ guile-2.2-git/doc/ref/Makefile.am	2017-06-28 17:15:12.536367756 -0600
+@@ -22,7 +22,7 @@
+ 
+ AUTOMAKE_OPTIONS = gnu
+ 
+-info_TEXINFOS = guile.texi
++info_TEXINFOS = guile-2.2.texi
+ 
+ guile_TEXINFOS = preface.texi			\
+                  intro.texi			\
+@@ -122,6 +122,7 @@
+ 	GUILE_AUTO_COMPILE=0 $(top_builddir)/meta/build-env guild \
+ 	  snarf-guile-m4-docs $(top_srcdir)/meta/guile.m4 \
+ 	  > $(srcdir)/$@
++guile-2.2.texi: effective-version.texi libguile-autoconf.texi
+ 
+ # Build that file from here rather than at the user's site to avoid
+ # triggering a rebuild of `guile.info'.  Note that `GUILE-VERSION' is
+Index: guile-2.2-git/doc/ref/guile.texi
+===================================================================
+--- guile-2.2-git.orig/doc/ref/guile.texi	2017-06-28 17:15:12.540367770 -0600
++++ guile-2.2-git/doc/ref/guile.texi	2017-06-28 17:15:12.536367756 -0600
+@@ -1,7 +1,7 @@
+ \input texinfo
+ @c -*-texinfo-*-
+ @c %**start of header
+-@setfilename guile.info
++@setfilename guile-2.2.info
+ @documentencoding UTF-8
+ @settitle Guile Reference Manual
+ @set guile
+@@ -126,7 +126,7 @@
+ 
+ @dircategory The Algorithmic Language Scheme
+ @direntry
+-* Guile Reference: (guile).     The Guile reference manual.
++* Guile Reference: (guile-2.2).     The Guile reference manual.
+ @end direntry
+ 
+ @setchapternewpage odd

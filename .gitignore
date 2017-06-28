@@ -168,3 +168,10 @@ INSTALL
 /meta/build-env
 /lib/limits.h
 /lib/stdint.h
+.pc
+.tarball-version
+debian/.debhelper/
+debian/autoreconf.after
+debian/autoreconf.before
+debian/no-trespassing/
+doc/ref/guile-2.2.texi

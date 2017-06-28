@@ -1,0 +1,4 @@
+# This is expected.  Guile puts the version in the name.
+@DEB_PKG_BASENAME@-libs binary: package-name-doesnt-match-sonames *libguilereadline-v-18-18*
+# These are required by dlopen during (use-modules (foo)).
+@DEB_PKG_BASENAME@-libs binary: non-dev-pkg-with-shlib-symlink *libguilereadline-v-18.so.18.0.0*

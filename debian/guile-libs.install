@@ -1,0 +1,17 @@
+debian/tmp/usr/lib/*/guile/@DEB_SRC_EFF_VER@/ccache/*
+debian/tmp/usr/lib/*/libguile-@DEB_SRC_EFF_VER@.so.*
+debian/tmp/usr/lib/*/libguilereadline*.so
+debian/tmp/usr/lib/*/libguilereadline-*.so.*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/guile-procedures.txt
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/ice-9/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/language/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/oop/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/rnrs.scm
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/rnrs/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/srfi/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/statprof.scm
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/sxml/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/system/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/texinfo.scm
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/texinfo/*
+debian/tmp/usr/share/guile/@DEB_SRC_EFF_VER@/web/*

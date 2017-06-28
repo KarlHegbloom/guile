@@ -1,0 +1,74 @@
+Source: guile-2.2
+Section: interpreters
+Priority: optional
+X-Orig-Maintainer: Rob Browning <rlb@defaultvalue.org>
+Maintainer: Karl M. Hegbloom <karl.hegbloom@gmail.com>
+Build-Depends: libtool, debhelper (>= 9), autoconf, automake, dh-autoreconf,
+ libncurses5-dev, libreadline6-dev, libltdl-dev, libgmp-dev, texinfo, flex, libunistring-dev, libgc-dev, libffi-dev, pkg-config
+Standards-Version: 3.7.2
+Homepage: http://www.gnu.org/software/guile/
+
+Package: guile-2.2
+Section: lisp
+Architecture: any
+Multi-Arch: allowed
+Provides: guile
+Depends: guile-2.2-libs (= ${binary:Version}), ${shlibs:Depends},
+ ${misc:Depends}
+Suggests: guile-2.2-doc
+Description: GNU extension language and Scheme interpreter
+ Guile is a Scheme implementation designed for real world programming,
+ providing a rich Unix interface, a module system, an interpreter, and
+ many extension languages.  Guile can be used as a standard #! style
+ interpreter, via #!/usr/bin/guile, or as an extension language for
+ other applications via libguile.
+
+Package: guile-2.2-dev
+Section: lisp
+Architecture: any
+Provides: libguile-dev
+Conflicts: libguile-dev
+Replaces: guile-2.2-libs (<< 2.2.2)
+Breaks: guile-2.2-libs (<< 2.2.2)
+Depends: ${shlibs:Depends}, guile-2.0:any (= ${binary:Version}),
+ guile-2.2-libs (= ${binary:Version}), libc6-dev,
+ libncurses5-dev, libreadline6-dev, libltdl-dev, libgmp-dev, libgc-dev,
+ pkg-config, ${misc:Depends}
+Description: Development files for Guile 2.2
+ This package contains files needed for development using Guile 2.2.
+ .
+ Guile is a Scheme implementation designed for real world programming,
+ providing a rich Unix interface, a module system, an interpreter, and
+ many extension languages.  Guile can be used as a standard #! style
+ interpreter, via #!/usr/bin/guile, or as an extension language for
+ other applications via libguile.
+
+Package: guile-2.2-doc
+Architecture: all
+Multi-Arch: foreign
+Section: doc
+Depends: dpkg (>= 1.15.4) | install-info, ${misc:Depends}
+Description: Documentation for Guile 2.2
+ This package contains the Guile documentation, including the Guile
+ Reference Manual.
+ .
+ Guile is a Scheme implementation designed for real world programming,
+ providing a rich Unix interface, a module system, an interpreter, and
+ many extension languages.  Guile can be used as a standard #! style
+ interpreter, via #!/usr/bin/guile, or as an extension language for
+ other applications via libguile.
+
+Package: guile-2.2-libs
+Section: lisp
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: guile-2.2-slib
+Provides: guile-2.2-slib
+Description: Core Guile libraries
+ Guile is a Scheme implementation designed for real world programming,
+ providing a rich Unix interface, a module system, an interpreter, and
+ many extension languages.  Guile can be used as a standard #! style
+ interpreter, via #!/usr/bin/guile, or as an extension language for
+ other applications via libguile.
