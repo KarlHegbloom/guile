@@ -52,6 +52,8 @@ else
   march =
 endif
 
+deb_host_gnu_type := $(shell dpkg-arch -qDEB_HOST_GNU_TYPE)
+
 define deb_sub
   perl -p \
     -e "s|\@UPSTREAM_VER\@|$(upstream_ver)|go;" \
@@ -62,6 +64,7 @@ define deb_sub
     -e "s|\@DEB_SRC_EFF_VER\@|$(deb_src_eff_ver)|go;" \
     -e "s|\@DEB_PKG_BASENAME\@|$(deb_pkg_basename)|go;" \
     -e "s|\@MARCH\@|$(march)|go;" \
+    -e "s|\@DEB_HOST_GNU_TYPE@|$(deb_host_gnu_type)|go" \
       < $(1) > $(2)
 endef
 

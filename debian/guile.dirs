@@ -1,0 +1,2 @@
+usr/lib/@DEB_HOST_GNU_TYPE@/guile/@DEB_SRC_EFF_VER@/ccache
+usr/lib/@DEB_HOST_GNU_TYPE@/guile/@DEB_SRC_EFF_VER@/site-ccache
