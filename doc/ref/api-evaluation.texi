@@ -422,8 +422,8 @@ affect the behavior of the Scheme printer.
 @cindex options - print
 @cindex print options
 @deffn {Scheme Procedure} print-options [setting]
-Display the current settings of the read options.  If @var{setting} is
-omitted, only a short form of the current read options is
+Display the current settings of the print options.  If @var{setting} is
+omitted, only a short form of the current print options is
 printed. Otherwise if @var{setting} is the symbol @code{help}, a
 complete options description is displayed.
 @end deffn
