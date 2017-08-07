@@ -52,7 +52,7 @@ else
   march =
 endif
 
-deb_host_gnu_type := $(shell dpkg-arch -qDEB_HOST_GNU_TYPE)
+deb_host_gnu_type := $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 
 define deb_sub
   perl -p \
