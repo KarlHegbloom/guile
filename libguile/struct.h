@@ -3,7 +3,8 @@
 #ifndef SCM_STRUCT_H
 #define SCM_STRUCT_H
 
-/* Copyright (C) 1995,1997,1999,2000,2001, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2015 Free Software Foundation, Inc.
+/* Copyright (C) 1995,1997,1999-2001, 2006-2013, 2015,
+ *               2017 Free Software Foundation, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -175,7 +176,7 @@ SCM_API SCM scm_make_struct_layout (SCM fields);
 SCM_API SCM scm_struct_p (SCM x);
 SCM_API SCM scm_struct_vtable_p (SCM x);
 SCM_INTERNAL SCM scm_allocate_struct (SCM vtable, SCM n_words);
-SCM_API SCM scm_make_struct (SCM vtable, SCM tail_array_size, SCM init);
+SCM_API SCM scm_make_struct_no_tail (SCM vtable, SCM init);
 SCM_API SCM scm_c_make_struct (SCM vtable, size_t n_tail, size_t n_inits,
                                scm_t_bits init, ...);
 SCM_API SCM scm_c_make_structv (SCM vtable, size_t n_tail, size_t n_inits,
@@ -184,6 +185,8 @@ SCM_API SCM scm_make_vtable (SCM fields, SCM printer);
 SCM_INTERNAL SCM scm_i_make_vtable_vtable (SCM fields);
 SCM_API SCM scm_struct_ref (SCM handle, SCM pos);
 SCM_API SCM scm_struct_set_x (SCM handle, SCM pos, SCM val);
+SCM_API SCM scm_struct_ref_unboxed (SCM handle, SCM pos);
+SCM_API SCM scm_struct_set_x_unboxed (SCM handle, SCM pos, SCM val);
 SCM_API SCM scm_struct_vtable (SCM handle);
 SCM_API SCM scm_struct_vtable_name (SCM vtable);
 SCM_API SCM scm_set_struct_vtable_name_x (SCM vtable, SCM name);

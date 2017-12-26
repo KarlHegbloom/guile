@@ -1,6 +1,6 @@
 @c -*-texinfo-*-
 @c This is part of the GNU Guile Reference Manual.
-@c Copyright (C)  1996, 1997, 2000-2004, 2006-2016
+@c Copyright (C)  1996, 1997, 2000-2004, 2006-2017
 @c   Free Software Foundation, Inc.
 @c See the file guile.texi for copying conditions.
 
@@ -7498,10 +7498,6 @@ same type, and have corresponding elements which are either
 @code{equal?} (@pxref{Equality}) in that all arguments must be arrays.
 @end deffn
 
-@c  FIXME: array-map! accepts no source arrays at all, and in that
-@c  case makes calls "(proc)".  Is that meant to be a documented
-@c  feature?
-@c
 @c  FIXME: array-for-each doesn't say what happens if the sources have
 @c  different index ranges.  The code currently iterates over the
 @c  indices of the first and expects the others to cover those.  That
@@ -7509,14 +7505,15 @@ same type, and have corresponding elements which are either
 @c  documented feature?
 
 @deffn {Scheme Procedure} array-map! dst proc src @dots{}
-@deffnx {Scheme Procedure} array-map-in-order! dst proc src1 @dots{} srcN
+@deffnx {Scheme Procedure} array-map-in-order! dst proc src @dots{}
 @deffnx {C Function} scm_array_map_x (dst, proc, srclist)
-Set each element of the @var{dst} array to values obtained from calls
-to @var{proc}.  The value returned is unspecified.
+Set each element of the @var{dst} array to values obtained from calls to
+@var{proc}.  The list of @var{src} arguments may be empty.  The value
+returned is unspecified.
 
-Each call is @code{(@var{proc} @var{elem1} @dots{} @var{elemN})},
-where each @var{elem} is from the corresponding @var{src} array, at
-the @var{dst} index.  @code{array-map-in-order!} makes the calls in
+Each call is @code{(@var{proc} @var{elem} @dots{})}, where each
+@var{elem} is from the corresponding @var{src} array, at the
+@var{dst} index.  @code{array-map-in-order!} makes the calls in
 row-major order, @code{array-map!} makes them in an unspecified order.
 
 The @var{src} arrays must have the same number of dimensions as
@@ -7568,37 +7565,19 @@ $\left(\matrix{%
 @end example
 @end deffn
 
-@deffn {Scheme Procedure} uniform-array-read! ra [port_or_fd [start [end]]]
-@deffnx {C Function} scm_uniform_array_read_x (ra, port_or_fd, start, end)
-Attempt to read all elements of array @var{ra}, in lexicographic order, as
-binary objects from @var{port_or_fd}.
-If an end of file is encountered,
-the objects up to that point are put into @var{ra}
-(starting at the beginning) and the remainder of the array is
-unchanged.
+An additional array function is available in the module
+@code{(ice-9 arrays)}. It can be used with:
 
-The optional arguments @var{start} and @var{end} allow
-a specified region of a vector (or linearized array) to be read,
-leaving the remainder of the vector unchanged.
+@example
+(use-modules (ice-9 arrays))
+@end example
 
-@code{uniform-array-read!} returns the number of objects read.
-@var{port_or_fd} may be omitted, in which case it defaults to the value
-returned by @code{(current-input-port)}.
-@end deffn
-
-@deffn {Scheme Procedure} uniform-array-write ra [port_or_fd [start [end]]]
-@deffnx {C Function} scm_uniform_array_write (ra, port_or_fd, start, end)
-Writes all elements of @var{ra} as binary objects to
-@var{port_or_fd}.
-
-The optional arguments @var{start}
-and @var{end} allow
-a specified region of a vector (or linearized array) to be written.
-
-The number of objects actually written is returned.
-@var{port_or_fd} may be
-omitted, in which case it defaults to the value returned by
-@code{(current-output-port)}.
+@deffn {Scheme Procedure} array-copy src
+Return a new array with the same elements, type and shape as
+@var{src}. However, the array increments may not be the same as those of
+@var{src}. In the current implementation, the returned array will be in
+row-major order, but that might change in the future. Use
+@code{array-copy!} on an array of known order if that is a concern.
 @end deffn
 
 @node Shared Arrays
@@ -8757,7 +8736,6 @@ records in Guile are implemented with structures.
 * Vtable Contents::
 * Meta-Vtables::
 * Vtable Example::
-* Tail Arrays::
 @end menu
 
 @node Vtables
@@ -8782,17 +8760,9 @@ it's protected against garbage collection.
 
 @item
 @code{u} -- an arbitrary word of data (an @code{scm_t_bits}).  At the
-Scheme level it's read and written as an unsigned integer.  ``u''
-stands for ``uninterpreted'' (it's not treated as a Scheme value), or
-``unprotected'' (it's not marked during GC), or ``unsigned long'' (its
-size), or all of these things.
-
-@item
-@code{s} -- a self-reference.  Such a field holds the @code{SCM} value
-of the structure itself (a circular reference).  This can be useful in
-C code where you might have a pointer to the data array, and want to
-get the Scheme @code{SCM} handle for the structure.  In Scheme code it
-has no use.
+Scheme level it's read and written as an unsigned integer.  ``u'' stands
+for ``unboxed'', as it's stored as a raw value without additional type
+annotations.
 @end itemize
 
 The second letter for each field is a permission code,
@@ -8803,18 +8773,14 @@ The second letter for each field is a permission code,
 @item
 @code{r} -- read-only, the field can be read but not written.
 @item
-@code{o} -- opaque, the field can be neither read nor written at the
-Scheme level.  This can be used for fields which should only be used
-from C code.
 @end itemize
 
-Here are some examples.  @xref{Tail Arrays}, for information on the
-legacy tail array facility.
+Here are some examples.
 
 @example
 (make-vtable "pw")      ;; one writable field
 (make-vtable "prpw")    ;; one read-only and one writable
-(make-vtable "pwuwuw")  ;; one scheme and two uninterpreted
+(make-vtable "pwuwuw")  ;; one scheme and two unboxed
 @end example
 
 The optional @var{print} argument is a function called by
@@ -8840,12 +8806,11 @@ structure.
 @node Structure Basics
 @subsubsection Structure Basics
 
-This section describes the basic procedures for working with
-structures.  @code{make-struct} creates a structure, and
-@code{struct-ref} and @code{struct-set!} access its fields.
+This section describes the basic procedures for working with structures.
+@code{make-struct/no-tail} creates a structure, and @code{struct-ref}
+and @code{struct-set!} access its fields.
 
-@deffn {Scheme Procedure} make-struct vtable tail-size init @dots{}
-@deffnx {Scheme Procedure} make-struct/no-tail vtable init @dots{}
+@deffn {Scheme Procedure} make-struct/no-tail vtable init @dots{}
 Create a new structure, with layout per the given @var{vtable}
 (@pxref{Vtables}).
 
@@ -8853,27 +8818,18 @@ The optional @var{init}@dots{} arguments are initial values for the
 fields of the structure.  This is the only way to
 put values in read-only fields.  If there are fewer @var{init}
 arguments than fields then the defaults are @code{#f} for a Scheme
-field (type @code{p}) or 0 for an uninterpreted field (type @code{u}).
+field (type @code{p}) or 0 for an unboxed field (type @code{u}).
 
-Structures also have the ability to allocate a variable number of
-additional cells at the end, at their tails.  However, this legacy
-@dfn{tail array} facilty is confusing and inefficient, and so we do not
-recommend it.  @xref{Tail Arrays}, for more on the legacy tail array
-interface.
-
-Type @code{s} self-reference fields, permission @code{o} opaque
-fields, and the count field of a tail array are all ignored for the
-@var{init} arguments, ie.@: an argument is not consumed by such a
-field.  An @code{s} is always set to the structure itself, an @code{o}
-is always set to @code{#f} or 0 (with the intention that C code will
-do something to it later), and the tail count is always the given
-@var{tail-size}.
+The name is a bit strange, we admit.  The reason for it is that Guile
+used to have a @code{make-struct} that took an additional argument;
+while we deprecate that old interface, @code{make-struct/no-tail} is the
+new name for this functionality.
 
 For example,
 
 @example
 (define v (make-vtable "prpwpw"))
-(define s (make-struct v 0 123 "abc" 456))
+(define s (make-struct/no-tail v 123 "abc" 456))
 (struct-ref s 0) @result{} 123
 (struct-ref s 1) @result{} "abc"
 @end example
@@ -8886,6 +8842,8 @@ There are a few ways to make structures from C.  @code{scm_make_struct}
 takes a list, @code{scm_c_make_struct} takes variable arguments
 terminated with SCM_UNDEFINED, and @code{scm_c_make_structv} takes a
 packed array.
+
+For all of these, @var{tail_size} should be zero (as a SCM value).
 @end deftypefn
 
 @deffn {Scheme Procedure} struct? obj
@@ -8898,8 +8856,7 @@ Return @code{#t} if @var{obj} is a structure, or @code{#f} if not.
 Return the contents of field number @var{n} in @var{struct}.  The
 first field is number 0.
 
-An error is thrown if @var{n} is out of range, or if the field cannot
-be read because it's @code{o} opaque.
+An error is thrown if @var{n} is out of range.
 @end deffn
 
 @deffn {Scheme Procedure} struct-set! struct n value
@@ -8908,7 +8865,21 @@ Set field number @var{n} in @var{struct} to @var{value}.  The first
 field is number 0.
 
 An error is thrown if @var{n} is out of range, or if the field cannot
-be written because it's @code{r} read-only or @code{o} opaque.  
+be written because it's @code{r} read-only.
+@end deffn
+
+Unboxed fields (those with type @code{u}) need to be accessed with
+special procedures.
+
+@deffn {Scheme Procedure} struct-ref/unboxed struct n
+@deffnx {Scheme Procedure} struct-set!/unboxed struct n value
+@deffnx {C Function} scm_struct_ref_unboxed (struct, n)
+@deffnx {C Function} scm_struct_set_x_unboxed (struct, n, value)
+Like @code{struct-ref} and @code{struct-set!}, except that these may
+only be used on unboxed fields.  @code{struct-ref/unboxed} will always
+return a positive integer.  Likewise, @code{struct-set!/unboxed} takes
+an unsigned integer as the @var{value} argument, and will signal an
+error otherwise.
 @end deffn
 
 @deffn {Scheme Procedure} struct-vtable struct
@@ -9196,53 +9167,6 @@ included GOOPS system does make most of them.  For more simple use
 cases, the records facility is usually sufficient.  But sometimes you
 need to make new kinds of data abstractions, and for that purpose,
 structs are here.
-
-@node Tail Arrays
-@subsubsection Tail Arrays
-
-Guile's structures have a facility whereby each instance of a vtable can
-contain a variable-length tail array of values.  The length of the tail
-array is stored in the structure.  This facility was originally intended
-to allow C code to expose raw C structures with word-sized tail arrays
-to Scheme.
-
-However, the tail array facility is confusing and doesn't work very
-well.  It is very rarely used, but it insinuates itself into all
-invocations of @code{make-struct}.  For this reason the clumsily-named
-@code{make-struct/no-tail} procedure can actually be more elegant in
-actual use, because it doesn't have a random @code{0} argument stuck in
-the middle.
-
-Tail arrays also inhibit optimization by allowing instances to affect
-their shapes.  In the absence of tail arrays, all instances of a given
-vtable have the same number and kinds of fields.  This uniformity can be
-exploited by the runtime and the optimizer.  The presence of tail arrays
-make some of these optimizations more difficult.
-
-Finally, the tail array facility is ad-hoc and does not compose with the
-rest of Guile.  If a Guile user wants an array with user-specified
-length, it's best to use a vector.  It is more clear in the code, and
-the standard optimization techniques will do a good job with it.
-
-That said, we should mention some details about the interface.  A vtable
-that has tail array has upper-case permission descriptors: @code{W},
-@code{R} or @code{O}, correspoding to tail arrays of writable,
-read-only, or opaque elements.  A tail array permission descriptor may
-only appear in the last element of a vtable layout.
-
-For exampple, @samp{pW} indicates a tail of writable Scheme-valued
-fields.  The @samp{pW} field itself holds the tail size, and the tail
-fields come after it.
-
-@example
-(define v (make-vtable "prpW")) ;; one fixed then a tail array
-(define s (make-struct v 6 "fixed field" 'x 'y))
-(struct-ref s 0) @result{} "fixed field"
-(struct-ref s 1) @result{} 2    ;; tail size
-(struct-ref s 2) @result{} x    ;; tail array ...
-(struct-ref s 3) @result{} y
-(struct-ref s 4) @result{} #f
-@end example
 
 
 @node Dictionary Types

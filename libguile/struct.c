@@ -1,5 +1,5 @@
-/* Copyright (C) 1996,1997,1998,1999,2000,2001, 2003, 2004, 2006, 2007,
- *   2008, 2009, 2010, 2011, 2012, 2013, 2015 Free Software Foundation, Inc.
+/* Copyright (C) 1996-2001, 2003-2004, 2006-2013, 2015,
+ *               2017 Free Software Foundation, Inc.
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -30,6 +30,7 @@
 #include "libguile/_scm.h"
 #include "libguile/async.h"
 #include "libguile/chars.h"
+#include "libguile/deprecation.h"
 #include "libguile/eval.h"
 #include "libguile/alist.h"
 #include "libguile/hashtab.h"
@@ -68,16 +69,14 @@ SCM_DEFINE (scm_make_struct_layout, "make-struct-layout", 1, 0, 0,
 	    "@var{fields} must be a string made up of pairs of characters\n"
 	    "strung together.  The first character of each pair describes a field\n"
 	    "type, the second a field protection.  Allowed types are 'p' for\n"
-	    "GC-protected Scheme data, 'u' for unprotected binary data, and 's' for\n"
-	    "a field that points to the structure itself.    Allowed protections\n"
-	    "are 'w' for mutable fields, 'h' for hidden fields, 'r' for read-only\n"
-            "fields, and 'o' for opaque fields.\n\n"
+	    "GC-protected Scheme data, 'u' for unprotected binary data.  \n"
+            "Allowed protections\n"
+	    "are 'w' for mutable fields, 'h' for hidden fields, and\n"
+            "'r' for read-only fields.\n\n"
             "Hidden fields are writable, but they will not consume an initializer arg\n"
             "passed to @code{make-struct}. They are useful to add slots to a struct\n"
             "in a way that preserves backward-compatibility with existing calls to\n"
-            "@code{make-struct}, especially for derived vtables.\n\n"
-            "The last field protection specification may be capitalized to indicate\n"
-	    "that the field is a tail-array.")
+            "@code{make-struct}, especially for derived vtables.")
 #define FUNC_NAME s_scm_make_struct_layout
 {
   SCM new_sym;
@@ -100,10 +99,6 @@ SCM_DEFINE (scm_make_struct_layout, "make-struct-layout", 1, 0, 0,
 	  {
 	  case 'u':
 	  case 'p':
-#if 0
-	  case 'i':
-	  case 'd':
-#endif
 	  case 's':
 	    break;
 	  default:
@@ -134,16 +129,6 @@ SCM_DEFINE (scm_make_struct_layout, "make-struct-layout", 1, 0, 0,
 	    SCM_MISC_ERROR ("unrecognized ref specification: ~S",
 			    scm_list_1 (SCM_MAKE_CHAR (c)));
 	  }
-#if 0
-	if (scm_i_string_ref (fields, x, 'd'))
-	  {
-	    if (!scm_i_string_ref (fields, x+2, '-'))
-	      SCM_MISC_ERROR ("missing dash field at position ~A",
-			      scm_list_1 (scm_from_int (x / 2)));
-	    x += 2;
-	    goto recheck_ref;
-	  }
-#endif
       }
     new_sym = scm_string_to_symbol (fields);
   }
@@ -188,6 +173,13 @@ set_vtable_layout_flags (SCM vtable)
 	  case 'r':
 	    flags &= ~SCM_VTABLE_FLAG_SIMPLE_RW;
 	    break;
+
+          case 'o':
+          case 'O':
+            scm_c_issue_deprecation_warning
+              ("Opaque struct fields are deprecated.  Struct field protection "
+               "should be layered on at a higher level.");
+            /* Fall through.  */
 
 	  default:
 	    flags = 0;
@@ -241,6 +233,23 @@ scm_is_valid_vtable_layout (SCM layout)
         return 0;
       }
   return 1;
+}
+
+static void
+issue_deprecation_warning_for_self_slots (SCM vtable)
+{
+  SCM olayout;
+  size_t idx, first_user_slot = 0;
+
+  olayout = scm_symbol_to_string (SCM_VTABLE_LAYOUT (vtable));
+  if (SCM_VTABLE_FLAG_IS_SET (vtable, SCM_VTABLE_FLAG_VTABLE))
+    first_user_slot = scm_vtable_offset_user;
+
+  for (idx = first_user_slot * 2; idx < scm_c_string_length (olayout); idx += 2)
+    if (scm_is_eq (scm_c_string_ref (olayout, idx), SCM_MAKE_CHAR ('s')))
+      scm_c_issue_deprecation_warning
+        ("Vtables with \"self\" slots are deprecated.  Initialize these "
+         "fields manually.");
 }
 
 /* Have OBJ, a newly created vtable, inherit flags from VTABLE.  VTABLE is a
@@ -301,6 +310,8 @@ scm_i_struct_inherit_vtable_magic (SCM vtable, SCM obj)
                         scm_list_1 (olayout));
       SCM_SET_VTABLE_FLAGS (obj, SCM_VTABLE_FLAG_APPLICABLE);
     }
+
+  issue_deprecation_warning_for_self_slots (obj);
 
   SCM_SET_VTABLE_FLAGS (obj, SCM_VTABLE_FLAG_VALIDATED);
 }
@@ -553,23 +564,19 @@ SCM_DEFINE (scm_allocate_struct, "allocate-struct", 2, 0, 0,
 }
 #undef FUNC_NAME
 
-SCM_DEFINE (scm_make_struct, "make-struct", 2, 0, 1, 
-            (SCM vtable, SCM tail_array_size, SCM init),
+SCM_DEFINE (scm_make_struct_no_tail, "make-struct/no-tail", 1, 0, 1, 
+            (SCM vtable, SCM init),
 	    "Create a new structure.\n\n"
 	    "@var{vtable} must be a vtable structure (@pxref{Vtables}).\n\n"
-	    "@var{tail_array_size} must be a non-negative integer.  If the layout\n"
-	    "specification indicated by @var{vtable} includes a tail-array,\n"
-	    "this is the number of elements allocated to that array.\n\n"
 	    "The @var{init1}, @dots{} are optional arguments describing how\n"
-	    "successive fields of the structure should be initialized.  Only fields\n"
-	    "with protection 'r' or 'w' can be initialized, except for fields of\n"
-	    "type 's', which are automatically initialized to point to the new\n"
-	    "structure itself. Fields with protection 'o' can not be initialized by\n"
-	    "Scheme programs.\n\n"
+	    "successive fields of the structure should be initialized.\n"
+            "Only fields with protection 'r' or 'w' can be initialized.\n"
+            "Hidden fields (those with protection 'h') have to be manually\n"
+            "set.\n\n"
 	    "If fewer optional arguments than initializable fields are supplied,\n"
 	    "fields of type 'p' get default value #f while fields of type 'u' are\n"
 	    "initialized to 0.")
-#define FUNC_NAME s_scm_make_struct
+#define FUNC_NAME s_scm_make_struct_no_tail
 {
   size_t i, n_init;
   long ilen;
@@ -592,7 +599,7 @@ SCM_DEFINE (scm_make_struct, "make-struct", 2, 0, 1,
   for (i = 0; i < n_init; i++, init = SCM_CDR (init))
     v[i] = SCM_UNPACK (SCM_CAR (init));
 
-  return scm_c_make_structv (vtable, scm_to_size_t (tail_array_size), n_init, v);
+  return scm_c_make_structv (vtable, 0, n_init, v);
 }
 #undef FUNC_NAME
 
@@ -638,9 +645,9 @@ SCM_DEFINE (scm_make_vtable, "make-vtable", 1, 1, 0,
   if (SCM_UNBNDP (printer))
     printer = SCM_BOOL_F;
 
-  return scm_make_struct (scm_standard_vtable_vtable, SCM_INUM0,
-                          scm_list_2 (scm_make_struct_layout (fields),
-                                      printer));
+  return scm_c_make_struct (scm_standard_vtable_vtable, 0, 2,
+                            SCM_UNPACK (scm_make_struct_layout (fields)),
+                            SCM_UNPACK (printer));
 }
 #undef FUNC_NAME
 
@@ -669,20 +676,37 @@ scm_i_struct_equalp (SCM s1, SCM s2)
 
   for (field_num = 0; field_num < struct_size; field_num++)
     {
-      SCM s_field_num;
-      SCM field1, field2;
+      scm_t_bits field1, field2;
 
-      /* We have to use `scm_struct_ref ()' here so that fields are accessed
-	 consistently, notably wrt. field types and access rights.  */
-      s_field_num = scm_from_size_t (field_num);
-      field1 = scm_struct_ref (s1, s_field_num);
-      field2 = scm_struct_ref (s2, s_field_num);
+      field1 = SCM_STRUCT_DATA_REF (s1, field_num);
+      field2 = SCM_STRUCT_DATA_REF (s2, field_num);
 
-      /* Self-referencing fields (type `s') must be skipped to avoid infinite
-	 recursion.  */
-      if (!(scm_is_eq (field1, s1) && (scm_is_eq (field2, s2))))
-	if (scm_is_false (scm_equal_p (field1, field2)))
-	  return SCM_BOOL_F;
+      if (field1 != field2) {
+        switch (scm_i_symbol_ref (layout, field_num * 2))
+          {
+          case 'p':
+            /* Having a normal field point to the object itself is a bit
+               bonkers, but R6RS enums do it, so here we have a horrible
+               hack.  */
+            if (field1 != SCM_UNPACK (s1) && field2 != SCM_UNPACK (s2))
+              {
+                if (scm_is_false
+                    (scm_equal_p (SCM_PACK (field1), SCM_PACK (field2))))
+                  return SCM_BOOL_F;
+              }
+            break;
+          case 's':
+            /* Skip to avoid infinite recursion.  */
+            break;
+          case 'u':
+            return SCM_BOOL_F;
+          default:
+            /* Don't bother inspecting tail arrays; we never did this in
+               the past and in the future tail arrays are going away
+               anyway.  */
+            return SCM_BOOL_F;
+          }
+      }
     }
 
   /* FIXME: Tail elements should be tested for equality.  */
@@ -758,18 +782,11 @@ SCM_DEFINE (scm_struct_ref, "struct-ref", 2, 0, 0,
       switch (field_type)
 	{
 	case 'u':
+          scm_c_issue_deprecation_warning
+            ("Accessing unboxed struct fields with struct-ref is deprecated.  "
+             "Use struct-ref/unboxed instead.");
 	  answer = scm_from_ulong (data[p]);
 	  break;
-
-#if 0
-	case 'i':
-	  answer = scm_from_long (data[p]);
-	  break;
-
-	case 'd':
-	  answer = scm_make_real (*((double *)&(data[p])));
-	  break;
-#endif
 
 	case 's':
 	case 'p':
@@ -841,18 +858,11 @@ SCM_DEFINE (scm_struct_set_x, "struct-set!", 3, 0, 0,
       switch (field_type)
 	{
 	case 'u':
+          scm_c_issue_deprecation_warning
+            ("Accessing unboxed struct fields with struct-set! is deprecated.  "
+             "Use struct-set!/unboxed instead.");
 	  data[p] = SCM_NUM2ULONG (3, val);
 	  break;
-
-#if 0
-	case 'i':
-	  data[p] = SCM_NUM2LONG (3, val);
-	  break;
-
-	case 'd':
-	  *((double *)&(data[p])) = scm_num2dbl (val, (char *)SCM_ARG3);
-	  break;
-#endif
 
 	case 'p':
 	  data[p] = SCM_UNPACK (val);
@@ -866,6 +876,80 @@ SCM_DEFINE (scm_struct_set_x, "struct-set!", 3, 0, 0,
 			  scm_list_1 (SCM_MAKE_CHAR (field_type)));
 	}
     }
+
+  return val;
+}
+#undef FUNC_NAME
+
+
+SCM_DEFINE (scm_struct_ref_unboxed, "struct-ref/unboxed", 2, 0, 0,
+            (SCM handle, SCM pos),
+	    "Access the @var{pos}th field of struct associated with\n"
+	    "@var{handle}.  The field must be of type 'u'.")
+#define FUNC_NAME s_scm_struct_ref_unboxed
+{
+  SCM vtable, layout;
+  size_t layout_len, n_fields;
+  size_t p;
+
+  SCM_VALIDATE_STRUCT (1, handle);
+
+  vtable = SCM_STRUCT_VTABLE (handle);
+  p = scm_to_size_t (pos);
+
+  layout = SCM_VTABLE_LAYOUT (vtable);
+  layout_len = scm_i_symbol_length (layout);
+  n_fields = layout_len / 2;
+
+  SCM_ASSERT_RANGE (1, pos, p < n_fields);
+
+  /* Only 'u' fields, no tail arrays.  */
+  SCM_ASSERT (scm_i_symbol_ref (layout, p * 2) == 'u',
+              layout, 0, FUNC_NAME);
+
+  /* Don't support opaque fields.  */
+  SCM_ASSERT (scm_i_symbol_ref (layout, p * 2 + 1) != 'o',
+              layout, 0, FUNC_NAME);
+
+  return scm_from_uintptr_t (SCM_STRUCT_DATA_REF (handle, p));
+}
+#undef FUNC_NAME
+
+
+SCM_DEFINE (scm_struct_set_x_unboxed, "struct-set!/unboxed", 3, 0, 0,
+            (SCM handle, SCM pos, SCM val),
+	    "Set the slot of the structure @var{handle} with index @var{pos}\n"
+	    "to @var{val}.  Signal an error if the slot can not be written\n"
+	    "to.")
+#define FUNC_NAME s_scm_struct_set_x_unboxed
+{
+  SCM vtable, layout;
+  size_t layout_len, n_fields;
+  size_t p;
+
+  SCM_VALIDATE_STRUCT (1, handle);
+
+  vtable = SCM_STRUCT_VTABLE (handle);
+  p = scm_to_size_t (pos);
+
+  layout = SCM_VTABLE_LAYOUT (vtable);
+  layout_len = scm_i_symbol_length (layout);
+  n_fields = layout_len / 2;
+
+  SCM_ASSERT_RANGE (1, pos, p < n_fields);
+
+  /* Only 'u' fields, no tail arrays.  */
+  SCM_ASSERT (scm_i_symbol_ref (layout, p * 2) == 'u',
+              layout, 0, FUNC_NAME);
+
+  /* Don't support opaque fields.  */
+  SCM_ASSERT (scm_i_symbol_ref (layout, p * 2 + 1) != 'o',
+              layout, 0, FUNC_NAME);
+
+  if (scm_i_symbol_ref (layout, p * 2 + 1) == 'r')
+    SCM_MISC_ERROR ("set! denied for field ~A", scm_list_1 (pos));
+
+  SCM_STRUCT_DATA_SET (handle, p, scm_to_uintptr_t (val));
 
   return val;
 }
@@ -1002,8 +1086,8 @@ scm_init_struct ()
   scm_define (name, scm_standard_vtable_vtable);
 
   scm_applicable_struct_vtable_vtable =
-    scm_make_struct (scm_standard_vtable_vtable, SCM_INUM0,
-                     scm_list_1 (scm_make_struct_layout (required_vtable_fields)));
+    scm_c_make_struct (scm_standard_vtable_vtable, 0, 1,
+                       SCM_UNPACK (scm_make_struct_layout (required_vtable_fields)));
   name = scm_from_utf8_symbol ("<applicable-struct-vtable>");
   SCM_SET_VTABLE_FLAGS (scm_applicable_struct_vtable_vtable,
                         SCM_VTABLE_FLAG_APPLICABLE_VTABLE);
@@ -1011,8 +1095,8 @@ scm_init_struct ()
   scm_define (name, scm_applicable_struct_vtable_vtable);
 
   scm_applicable_struct_with_setter_vtable_vtable =
-    scm_make_struct (scm_standard_vtable_vtable, SCM_INUM0,
-                     scm_list_1 (scm_make_struct_layout (required_vtable_fields)));
+    scm_c_make_struct (scm_standard_vtable_vtable, 0, 1,
+                       SCM_UNPACK (scm_make_struct_layout (required_vtable_fields)));
   name = scm_from_utf8_symbol ("<applicable-struct-with-setter-vtable>");
   scm_set_struct_vtable_name_x (scm_applicable_struct_with_setter_vtable_vtable, name);
   SCM_SET_VTABLE_FLAGS (scm_applicable_struct_with_setter_vtable_vtable,
